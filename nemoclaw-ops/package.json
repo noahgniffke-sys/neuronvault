@@ -1,0 +1,17 @@
+{
+  "name": "nemoclaw-ops",
+  "version": "1.0.0",
+  "description": "NemoClaw ops sidecar — unified Telegram bridge + ops commands",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0",
+    "node-cron": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
