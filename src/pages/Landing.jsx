@@ -82,7 +82,7 @@ export default function Landing() {
         </div>
         <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight leading-tight mb-6">
           <span className="text-dark-50">Version control for</span><br />
-          <span className="gradient-flow bg-clip-text text-transparent">your knowledge</span>
+          <span className="text-neon-400 text-glow-green">your knowledge</span>
         </h1>
         <p className="text-lg text-dark-300 max-w-2xl mx-auto mb-8 leading-relaxed">
           Like GitHub, but for your notes. Track every change, branch ideas,
