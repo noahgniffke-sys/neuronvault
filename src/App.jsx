@@ -3,6 +3,7 @@ import { useAuth } from './lib/AuthContext'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import AuthCallback from './pages/AuthCallback'
 import Dashboard from './pages/Dashboard'
 import NoteEditor from './pages/NoteEditor'
 import NoteHistory from './pages/NoteHistory'
@@ -27,6 +28,7 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/note/:id" element={<ProtectedRoute><NoteEditor /></ProtectedRoute>} />
       <Route path="/note/:id/history" element={<ProtectedRoute><NoteHistory /></ProtectedRoute>} />
