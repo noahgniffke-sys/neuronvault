@@ -27,12 +27,23 @@ function AuthCallback() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        subscription.unsubscribe()
         navigate('/dashboard', { replace: true })
       }
     })
-  }, [navigate])
+
+    // Fallback: if session already exists, redirect immediately
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        subscription.unsubscribe()
+        navigate('/dashboard', { replace: true })
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark-800">
