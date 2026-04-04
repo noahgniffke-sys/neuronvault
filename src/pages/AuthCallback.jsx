@@ -8,50 +8,34 @@ export default function AuthCallback() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    async function handleCallback() {
-      const hash = window.location.hash
-      if (!hash.includes('access_token')) {
-        // No token — might already be signed in, or bad link
-        const { data } = await supabase.auth.getSession()
-        if (data.session) {
-          navigate('/dashboard', { replace: true })
-        } else {
-          navigate('/login', { replace: true })
-        }
-        return
-      }
-
-      // Extract tokens from hash
-      const params = new URLSearchParams(hash.substring(1))
-      const access_token = params.get('access_token')
-      const refresh_token = params.get('refresh_token')
-
-      if (!access_token || !refresh_token) {
-        setError('Missing tokens in callback URL')
-        return
-      }
-
-      // Set the session manually
-      const { data, error: sessionError } = await supabase.auth.setSession({
-        access_token,
-        refresh_token
-      })
-
-      if (sessionError) {
-        setError(sessionError.message)
-        return
-      }
-
-      if (data.session) {
-        // Clean hash and go to dashboard
-        window.history.replaceState(null, '', '/auth/callback')
+    // Supabase auto-detects the #access_token hash and creates the session.
+    // We just need to wait for it to finish, then redirect.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
         navigate('/dashboard', { replace: true })
-      } else {
-        setError('Failed to create session')
       }
-    }
+    })
 
-    handleCallback()
+    // Also check if session already exists (in case the event already fired)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate('/dashboard', { replace: true })
+      }
+    })
+
+    // Timeout — if nothing happens after 5 seconds, show error
+    const timeout = setTimeout(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session) {
+          setError('Sign-in timed out. Please try again.')
+        }
+      })
+    }, 5000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [navigate])
 
   return (
