@@ -27,22 +27,26 @@ function AuthCallback() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // Supabase client auto-detects the hash fragment and creates the session.
+    // We just need to wait for it to finish, then redirect.
+    const interval = setInterval(async () => {
+      const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        subscription.unsubscribe()
+        clearInterval(interval)
         navigate('/dashboard', { replace: true })
       }
-    })
+    }, 500)
 
-    // Fallback: if session already exists, redirect immediately
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        subscription.unsubscribe()
-        navigate('/dashboard', { replace: true })
-      }
-    })
+    // Timeout after 10 seconds
+    const timeout = setTimeout(() => {
+      clearInterval(interval)
+      navigate('/login', { replace: true })
+    }, 10000)
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearInterval(interval)
+      clearTimeout(timeout)
+    }
   }, [])
 
   return (
