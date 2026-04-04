@@ -8,18 +8,37 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // onAuthStateChange fires INITIAL_SESSION on mount.
-    // If there's a #access_token hash, Supabase processes it first, then fires with the session.
-    // If there's a stored session, it fires with that.
-    // If nothing, it fires with null.
-    // No getSession() call needed — it races and resolves before the hash is processed.
+    async function init() {
+      // If the URL has a hash with access_token (OAuth callback),
+      // extract tokens manually and set the session explicitly.
+      // This avoids the race where INITIAL_SESSION fires before hash processing.
+      const hash = window.location.hash
+      if (hash.includes('access_token')) {
+        const params = new URLSearchParams(hash.substring(1))
+        const access_token = params.get('access_token')
+        const refresh_token = params.get('refresh_token')
+
+        if (access_token && refresh_token) {
+          const { data } = await supabase.auth.setSession({ access_token, refresh_token })
+          setUser(data.session?.user ?? null)
+          // Clean the hash from URL
+          window.history.replaceState(null, '', window.location.pathname)
+          setLoading(false)
+          return
+        }
+      }
+
+      // Normal page load — check existing session
+      const { data } = await supabase.auth.getSession()
+      setUser(data.session?.user ?? null)
+      setLoading(false)
+    }
+
+    init()
+
+    // Listen for future auth changes (sign out, token refresh, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      setLoading(false)
-      // Clean the hash from the URL after OAuth callback
-      if (window.location.hash) {
-        window.history.replaceState(null, '', window.location.pathname)
-      }
     })
 
     return () => subscription.unsubscribe()
