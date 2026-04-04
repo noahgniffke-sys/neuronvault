@@ -8,44 +8,33 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check if there's a hash fragment with access_token (OAuth callback)
-    const hasAuthParams = window.location.hash.includes('access_token')
+    let resolved = false
 
-    if (hasAuthParams) {
-      // Let Supabase process the hash via onAuthStateChange
-      // Don't call getSession yet — wait for the event
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          setUser(session.user)
+    // Listen for auth changes FIRST — this catches the OAuth hash callback
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      resolved = true
+      setUser(session?.user ?? null)
+      setLoading(false)
+      // Clean the hash from the URL if present
+      if (window.location.hash.includes('access_token')) {
+        window.history.replaceState(null, '', window.location.pathname)
+      }
+    })
+
+    // Fallback: if no auth event fires within 2s (normal page load with no hash),
+    // check for an existing session manually
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          setUser(session?.user ?? null)
           setLoading(false)
-          // Clean up the URL hash
-          window.history.replaceState(null, '', window.location.pathname)
-        }
-      })
+        })
+      }
+    }, 100)
 
-      // Timeout fallback
-      setTimeout(() => {
-        if (loading) {
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null)
-            setLoading(false)
-          })
-        }
-      }, 3000)
-
-      return () => subscription.unsubscribe()
-    } else {
-      // Normal page load — check existing session
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        setUser(session?.user ?? null)
-        setLoading(false)
-      })
-
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user ?? null)
-      })
-
-      return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timer)
+      subscription.unsubscribe()
     }
   }, [])
 
