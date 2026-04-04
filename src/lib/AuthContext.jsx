@@ -8,34 +8,21 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let resolved = false
-
-    // Listen for auth changes FIRST — this catches the OAuth hash callback
+    // onAuthStateChange fires INITIAL_SESSION on mount.
+    // If there's a #access_token hash, Supabase processes it first, then fires with the session.
+    // If there's a stored session, it fires with that.
+    // If nothing, it fires with null.
+    // No getSession() call needed — it races and resolves before the hash is processed.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      resolved = true
       setUser(session?.user ?? null)
       setLoading(false)
-      // Clean the hash from the URL if present
-      if (window.location.hash.includes('access_token')) {
+      // Clean the hash from the URL after OAuth callback
+      if (window.location.hash) {
         window.history.replaceState(null, '', window.location.pathname)
       }
     })
 
-    // Fallback: if no auth event fires within 2s (normal page load with no hash),
-    // check for an existing session manually
-    const timer = setTimeout(() => {
-      if (!resolved) {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          setUser(session?.user ?? null)
-          setLoading(false)
-        })
-      }
-    }, 100)
-
-    return () => {
-      clearTimeout(timer)
-      subscription.unsubscribe()
-    }
+    return () => subscription.unsubscribe()
   }, [])
 
   const signInWithGoogle = () =>
