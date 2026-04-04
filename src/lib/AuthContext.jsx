@@ -8,18 +8,45 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // This automatically processes hash fragments (#access_token=...)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    // Check if there's a hash fragment with access_token (OAuth callback)
+    const hasAuthParams = window.location.hash.includes('access_token')
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    if (hasAuthParams) {
+      // Let Supabase process the hash via onAuthStateChange
+      // Don't call getSession yet — wait for the event
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          setUser(session.user)
+          setLoading(false)
+          // Clean up the URL hash
+          window.history.replaceState(null, '', window.location.pathname)
+        }
+      })
 
-    return () => subscription.unsubscribe()
+      // Timeout fallback
+      setTimeout(() => {
+        if (loading) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            setUser(session?.user ?? null)
+            setLoading(false)
+          })
+        }
+      }, 3000)
+
+      return () => subscription.unsubscribe()
+    } else {
+      // Normal page load — check existing session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setUser(session?.user ?? null)
+        setLoading(false)
+      })
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user ?? null)
+      })
+
+      return () => subscription.unsubscribe()
+    }
   }, [])
 
   const signInWithGoogle = () =>
